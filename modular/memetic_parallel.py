@@ -54,6 +54,7 @@ class Config:
 		self.test_jump_fact = 0.85
 		self.test_temp_init = 2000
 		self.test_jump_dist = 180
+		self.ls_prob_ss = [0.1 for i in range (0,7)]
 	
 	def load_config(self):
 		try:
@@ -98,6 +99,21 @@ class Config:
 				self.test_temp_init = float(line[16:])
 			elif line.startswith('test_jump_dist:'):
 				self.test_jump_dist = float(line[16:])
+			
+			elif line.startswith('ls_prob_B:'):
+				self.ls_prob_ss[0] = float(line[11:])
+			elif line.startswith('ls_prob_C:'):
+				self.ls_prob_ss[1] = float(line[11:])
+			elif line.startswith('ls_prob_E:'):
+				self.ls_prob_ss[2] = float(line[11:])
+			elif line.startswith('ls_prob_G:'):
+				self.ls_prob_ss[3] = float(line[11:])
+			elif line.startswith('ls_prob_H:'):
+				self.ls_prob_ss[4] = float(line[11:])
+			elif line.startswith('ls_prob_I:'):
+				self.ls_prob_ss[5] = float(line[11:])
+			elif line.startswith('ls_prob_T:'):
+				self.ls_prob_ss[6] = float(line[11:])
 			
 			else:
 				print 'Bad format in the configuration file'

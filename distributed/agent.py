@@ -302,7 +302,7 @@ class Agent:
 		
 		return float_aux
 	
-	def simulated_annealing(self, prob_ls, fact_ls, prob_jump, radius_jump, temp_init, hist):
+	def simulated_annealing(self, ls_prob_ss, fact_ls, prob_jump, radius_jump, temp_init, hist):
 		# LS only in agent's self.current pocket
 		for i in range (1, len(self.current.pose.sequence())):
 			
@@ -310,7 +310,7 @@ class Agent:
 				name_res = self.current.pose.residue(i+1).name3()
 				random.seed()
 				
-				if random.random() <= prob_ls:
+				if random.random() <= ls_prob_ss[self.sequence.secondary_sequence_list[i]]:
 					random.seed()
 					
 					if random.random() <= prob_jump:
