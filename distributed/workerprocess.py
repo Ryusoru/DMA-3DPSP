@@ -32,6 +32,10 @@ class WorkerProcess(Process):
 		self.leader_reset_recv = None
 		self.support_reset_send = [None for i in range(0, self.config.num_sup)] if id * self.config.num_sup + 1 < self.config.num_agents else None
 		self.support_reset_recv = [None for i in range(0, self.config.num_sup)] if id * self.config.num_sup + 1 < self.config.num_agents else None
+		self.leader_scores_send = None
+		self.leader_scores_recv = None
+		self.support_scores_send = [None for i in range(0, self.config.num_sup)] if id * self.config.num_sup + 1 < self.config.num_agents else None
+		self.support_scores_recv = [None for i in range(0, self.config.num_sup)] if id * self.config.num_sup + 1 < self.config.num_agents else None
 		self.event_restart = Event()
 		self.stop_event = Event()
 		self.support_stop_event = [None for i in range(0, self.config.num_sup)] if id * self.config.num_sup + 1 < self.config.num_agents else None
@@ -187,6 +191,8 @@ class WorkerProcess(Process):
 		queue_recv = Queue()
 		queue_reset_send = Queue(1)
 		queue_reset_recv = Queue(1)
+		queue_scores_send = Queue(1)
+		queue_scores_recv = Queue(1)
 		stop_event = Event()
 		energy_number = Queue(1)
 		
@@ -197,6 +203,8 @@ class WorkerProcess(Process):
 		ServerManager.register('get_queue_recv', callable=lambda: queue_recv)
 		ServerManager.register('get_queue_reset_send', callable=lambda: queue_reset_send)
 		ServerManager.register('get_queue_reset_recv', callable=lambda: queue_reset_recv)
+		ServerManager.register('get_queue_scores_send', callable=lambda: queue_scores_send)
+		ServerManager.register('get_queue_scores_recv', callable=lambda: queue_scores_recv)
 		ServerManager.register('get_stop_event', callable=lambda: stop_event)
 		ServerManager.register('get_energy_number', callable=lambda: energy_number)
 
@@ -214,6 +222,8 @@ class WorkerProcess(Process):
 		ClientManager.register('get_queue_recv')
 		ClientManager.register('get_queue_reset_send')
 		ClientManager.register('get_queue_reset_recv')
+		ClientManager.register('get_queue_scores_send')
+		ClientManager.register('get_queue_scores_recv')
 		ClientManager.register('get_stop_event')
 		ClientManager.register('get_energy_number')
 
@@ -233,12 +243,13 @@ class WorkerProcess(Process):
 			self.support_recv[i] = servers[i].get_queue_recv()
 			self.support_reset_send[i] = servers[i].get_queue_reset_send()
 			self.support_reset_recv[i] = servers[i].get_queue_reset_recv()
+			self.support_scores_send[i] = servers[i].get_queue_scores_send()
+			self.support_scores_recv[i] = servers[i].get_queue_scores_recv()
 			self.support_stop_event[i] = servers[i].get_stop_event()
 			self.support_energy_number[i] = servers[i].get_energy_number()
 			
-			argv = (str(self.config.protein) + ' ' + str(self.config.num_levels) + ' ' + str(self.config.num_sup) + ' ' + str(self.config.max_agents) + ' ' +
-					str(self.config.num_pockets) + ' ' + str(self.config.if_reset) + ' ' + str(self.config.test_noimprove) + ' ' + str(self.config.score_weight) + ' ' +
-					str(self.config.sasa_weight) + ' ' + str(self.config.energy_limit) + ' ' + str(self.agent.id_supporters[i]))
+			argv = (str(self.config.protein) + ' ' + str(self.config.num_levels) + ' ' + str(self.config.num_sup) + ' ' + str(self.config.max_agents) + ' ' + str(self.config.num_pockets) + ' ' + 
+					str(self.config.if_reset) + ' ' + str(self.config.test_noimprove) + ' ' + str(self.config.energy_limit) + ' ' + str(self.agent.id_supporters[i]))
 			cmd = 'python memetic_parallel.py %s %d > memetic_parallel_%03d_agent-%02d.log 2>&1' % (argv, self.log_id, self.log_id, self.agent.id_supporters[i])
 			subprocess.Popen(['ssh', host, 'cd ' + path + ' && ' + cmd], stdin = None, stdout = None, stderr = None)
 		return servers
@@ -251,6 +262,8 @@ class WorkerProcess(Process):
 		self.leader_recv = client.get_queue_send()
 		self.leader_reset_send = client.get_queue_reset_recv()
 		self.leader_reset_recv = client.get_queue_reset_send()
+		self.leader_scores_send = client.get_queue_scores_recv()
+		self.leader_scores_recv = client.get_queue_scores_send()
 		self.stop_event = client.get_stop_event()
 		self.energy_number = client.get_energy_number()
 	
@@ -262,6 +275,9 @@ class WorkerProcess(Process):
 			servers = self.run_servers()
 		
 		jump_radius_aux = self.config.test_jump_dist
+		scores_limit = 0
+		if self.config.scores:
+			self.agent.current.set_scores(int(self.config.scores[0][1]), int(self.config.scores[0][2]))
 		self.agent.current.init_solution(self.hist_obj)
 		self.agent.update()
 		
@@ -387,10 +403,9 @@ class WorkerProcess(Process):
 				# Is event restart set?
 				if self.event_restart.is_set():
 					if self.agent.id_leader == None:
-						# Only the root leader can keep the best solution
 						self.agent.pockets = [self.agent.pockets[0]] + [None for i in range(1, self.config.num_pockets)]
 					else:
-						self.agent.pockets = [None for i in range(0, self.config.num_pockets)]
+						self.agent.pockets = [self.agent.pockets[0]] + [None for i in range(1, self.config.num_pockets)]
 						self.agent.leader_pockets = [None for i in range(0, self.config.num_pockets)]
 						if not self.leader_recv.empty():
 							self.leader_recv.get()
@@ -428,6 +443,38 @@ class WorkerProcess(Process):
 			if self.agent.id_leader == None:
 				if energy_calls > self.config.energy_limit:
 					self.stop_event.set()
+				else:
+					if self.config.scores:
+						if (energy_calls > (self.config.energy_limit * float(self.config.scores[scores_limit][0]))) & (len(self.config.scores) > (scores_limit + 1)):
+							print 'Changing scores %s-%s at %d' % (self.config.scores[scores_limit][1], self.config.scores[scores_limit][2], energy_calls)
+							if self.agent.id_supporters:
+								for i in range(0, self.config.num_sup):
+									self.support_scores_send[i].put(0)
+								for i in range(0, self.config.num_sup):
+									self.support_scores_recv[i].get()
+								for i in range(0, self.config.num_sup):
+									self.support_scores_send[i].put(0)
+
+							scores_limit += 1
+							self.agent.current.set_scores(int(self.config.scores[scores_limit][1]), int(self.config.scores[scores_limit][2]))
+							print 'Scores changed to %s-%s' % (self.config.scores[scores_limit][1], self.config.scores[scores_limit][2])
+			else:
+				if not self.leader_scores_recv.empty():
+					self.leader_scores_recv.get()
+					
+					if self.agent.id_supporters:
+						for i in range(0, self.config.num_sup):
+							self.support_scores_send[i].put(0)
+						for i in range(0, self.config.num_sup):
+							self.support_scores_recv[i].get()
+						for i in range(0, self.config.num_sup):
+							self.support_scores_send[i].put(0)
+					
+					self.leader_scores_send.put(0)
+					self.leader_scores_recv.get()
+					
+					scores_limit += 1
+					self.agent.current.set_scores(int(self.config.scores[scores_limit][1]), int(self.config.scores[scores_limit][2]))
 			
 			best_energy = self.agent.pockets[0].energy_value
 		

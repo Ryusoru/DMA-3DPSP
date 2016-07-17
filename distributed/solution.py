@@ -17,8 +17,8 @@ class Solution:
 			global scorefxn
 			scorefxn = create_score_function('talaris2013')
 			
-			self.score_weight = config.score_weight
-			self.sasa_weight = config.sasa_weight
+			self.score_weight = 100
+			self.sasa_weight = 100
 			self.sequence = sequence
 			self.generate_random_solution = False
 			self.pose = Pose()
@@ -51,6 +51,10 @@ class Solution:
 	def calculate_energy_old(self):
 		self.energy_value = scorefxn(self.pose)
 		self.energy_calls += 1
+	
+	def set_scores(self, score, sasa):
+		self.score_weight = score
+		self.sasa_weight = sasa
 		
 	def calculate_energy(self):
 		t_total_start = datetime.datetime.now()

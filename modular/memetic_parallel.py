@@ -36,9 +36,7 @@ class Config:
 		self.num_pockets = int(argv[5])
 		self.if_reset = (str(argv[6]) == 'True')
 		self.test_noimprove = int(argv[7])
-		self.score_weight = int(argv[8])
-		self.sasa_weight = int(argv[9])
-		self.energy_limit = int(argv[10])
+		self.energy_limit = int(argv[8])
 		
 		self.sequences_path = 'Sequences'
 		self.histograms_path = 'Histograms'
@@ -54,6 +52,8 @@ class Config:
 		self.test_jump_fact = 0.85
 		self.test_temp_init = 2000
 		self.test_jump_dist = 180
+		
+		self.scores = []
 	
 	def load_config(self):
 		try:
@@ -99,6 +99,10 @@ class Config:
 			elif line.startswith('test_jump_dist:'):
 				self.test_jump_dist = float(line[16:])
 			
+			elif line.startswith('add_scores:'):
+				score = line[12:].split()
+				self.scores.append(score)
+			
 			else:
 				print 'Bad format in the configuration file'
 				sys.exit()
@@ -125,7 +129,7 @@ def main():
 	hist_obj = HistogramFiles(sequence, error, config.use_angle_range, config.prob_radius, config.histograms_path)
 	hist_obj.read_histograms()
 	
-	worker = WorkerProcess(0, None, None, None, None, config, sequence, hist_obj, None, None, results_path)
+	worker = WorkerProcess(0, None, None, None, None, None, None, config, sequence, hist_obj, None, None, results_path)
 	
 	start_time = datetime.datetime.now()
 	worker.start()

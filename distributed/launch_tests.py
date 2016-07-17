@@ -56,8 +56,6 @@ class LaunchTests:
 				num_pockets = '10'
 				if_reset = 'True'
 				test_noimprove = '10'
-				score_weight = '100'
-				sasa_weight = '100'
 				energy_limit = '100000'
 				
 				while ((line) and (line.startswith('end config') == False)):
@@ -73,10 +71,6 @@ class LaunchTests:
 						if_reset = line[10:].rstrip()
 					elif line.startswith('test_noimprove:'):
 						test_noimprove = line[16:].rstrip()
-					elif line.startswith('score_weight:'):
-						score_weight = line[14:].rstrip()
-					elif line.startswith('sasa_weight:'):
-						sasa_weight = line[13:].rstrip()
 					elif line.startswith('energy_limit:'):
 						energy_limit = line[14:].rstrip()
 					else:
@@ -84,8 +78,7 @@ class LaunchTests:
 						sys.exit()
 					line = f.readline()
 				
-				self.configs.append(tree_levels + ' ' + tree_nodes + ' ' + max_agents + ' ' + num_pockets + ' ' + if_reset + ' ' +
-									test_noimprove + ' ' + score_weight + ' ' + sasa_weight + ' ' + energy_limit)
+				self.configs.append(tree_levels + ' ' + tree_nodes + ' ' + max_agents + ' ' + num_pockets + ' ' + if_reset + ' ' + test_noimprove + ' ' + energy_limit)
 			else:
 				print 'Bad format in the configuration file'
 				sys.exit()
