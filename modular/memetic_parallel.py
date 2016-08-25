@@ -54,6 +54,38 @@ class Config:
 		self.test_jump_fact = 0.85
 		self.test_temp_init = 2000
 		self.test_jump_dist = 180
+		self.ls_prob_ss = [0.1 for i in range (0,7)]
+	
+	def set_ls_probs(self, sequence):
+		count_ss_B = 0
+		count_ss_C = 0
+		count_ss_E = 0
+		count_ss_G = 0
+		count_ss_H = 0
+		count_ss_I = 0
+		count_ss_T = 0
+		
+		for ss in sequence.secondary_amino_sequence:
+			if ss == 'B':
+				count_ss_B += 1
+			if ss == 'C':
+				count_ss_C += 1
+			if ss == 'E':
+				count_ss_E += 1
+			if ss == 'G':
+				count_ss_G += 1
+			if ss == 'H':
+				count_ss_H += 1
+			if ss == 'I':
+				count_ss_I += 1
+			if ss == 'T':
+				count_ss_T += 1
+		
+		for i in range(len(self.ls_prob_ss)):
+			if i == 6:
+				self.ls_prob_ss[i] = 0.9
+			else:
+				self.ls_prob_ss[i] = 0.9 * (1 - (float(count_ss_T) / len(sequence.secondary_amino_sequence)))
 	
 	def load_config(self):
 		try:
@@ -99,6 +131,21 @@ class Config:
 			elif line.startswith('test_jump_dist:'):
 				self.test_jump_dist = float(line[16:])
 			
+			elif line.startswith('ls_prob_B:'):
+				self.ls_prob_ss[0] = float(line[11:])
+			elif line.startswith('ls_prob_C:'):
+				self.ls_prob_ss[1] = float(line[11:])
+			elif line.startswith('ls_prob_E:'):
+				self.ls_prob_ss[2] = float(line[11:])
+			elif line.startswith('ls_prob_G:'):
+				self.ls_prob_ss[3] = float(line[11:])
+			elif line.startswith('ls_prob_H:'):
+				self.ls_prob_ss[4] = float(line[11:])
+			elif line.startswith('ls_prob_I:'):
+				self.ls_prob_ss[5] = float(line[11:])
+			elif line.startswith('ls_prob_T:'):
+				self.ls_prob_ss[6] = float(line[11:])
+			
 			else:
 				print 'Bad format in the configuration file'
 				sys.exit()
@@ -121,6 +168,8 @@ def main():
 	
 	sequence = Sequence(config.protein, error, config.sequences_path)
 	sequence.read_sequence()
+	
+	config.set_ls_probs(sequence)
 	
 	hist_obj = HistogramFiles(sequence, error, config.use_angle_range, config.prob_radius, config.histograms_path)
 	hist_obj.read_histograms()
