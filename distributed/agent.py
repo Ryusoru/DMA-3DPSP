@@ -600,7 +600,7 @@ class Agent:
 							energy_temp = self.current.calculate_energy()
 							
 							if energy_temp < best_energy:
-								best_energy = energy_jump
+								best_energy = energy_temp
 							else:
 								energy_temp = best_energy
 								self.current.pose.set_phi(i+1, phi_ant)
@@ -1212,7 +1212,7 @@ class Agent:
 							energy_temp = self.current.calculate_energy()
 							
 							if energy_temp < best_energy:
-								best_energy = energy_jump
+								best_energy = energy_temp
 							else:
 								energy_temp = best_energy
 								self.current.pose.set_phi(i+1, phi_ant)
