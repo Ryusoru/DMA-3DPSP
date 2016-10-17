@@ -419,7 +419,7 @@ class Agent:
 								best_energy = energy_temp
 							else:
 								self.current.pose.set_phi(i+1, phi_ant)
-								self.current.calculate_energy()
+								self.current.energy_value = best_energy
 								phi = phi_ant
 						else:
 							phi = phi_ant
@@ -447,7 +447,7 @@ class Agent:
 								best_energy = energy_temp
 							else:
 								self.current.pose.set_psi(i+1, psi_ant)
-								self.current.calculate_energy()
+								self.current.energy_value = best_energy
 								psi = psi_ant
 						else:
 							psi = psi_ant
@@ -478,13 +478,13 @@ class Agent:
 											if control == 0:
 												chi_value = backup_chi_list[n_chi]
 												self.current.pose.set_chi(n_chi+1, i+1, chi_value)
-												self.current.calculate_energy()
+												self.current.energy_value = best_energy
 												control = 999
 											else:
 												if control < 0:
 													chi_value = chi_ant
 													self.current.pose.set_chi(n_chi+1, i+1, chi_value)
-													self.current.calculate_energy()
+													self.current.energy_value = best_energy
 													control = 9991
 									else:
 										control = 999
@@ -501,7 +501,7 @@ class Agent:
 										
 										else:
 											self.current.pose.set_chi(n_chi+1, i+1, chi_ant)
-											self.current.calculate_energy()
+											self.current.energy_value = best_energy
 											chi_value = chi_ant
 											control = 9991
 									else:
