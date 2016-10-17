@@ -228,7 +228,7 @@ class WorkerProcess(Process):
 			
 			# Local search
 			time_ls_start = datetime.datetime.now()
-			self.agent.simulated_annealing(self.config.ls_prob_ss, self.config.test_ls_fact, self.config.test_jump_prob, jump_radius_aux, self.config.test_temp_init, self.hist_obj)
+			self.agent.simulated_annealing_original(self.config.ls_prob_ss, self.config.test_ls_fact, self.config.test_jump_prob, jump_radius_aux, self.config.test_temp_init, self.hist_obj)
 			self.agent.time_ls += datetime.datetime.now() - time_ls_start
 			jump_radius_aux = jump_radius_aux * self.config.test_jump_fact
 			
