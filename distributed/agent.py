@@ -597,7 +597,8 @@ class Agent:
 							
 							self.current.pose.set_phi(i+1, phi)
 							self.current.pose.set_psi(i+1, psi)
-							energy_temp = self.current.calculate_energy()
+							self.current.calculate_energy()
+							energy_temp = self.current.energy_value
 							
 							if energy_temp < best_energy:
 								best_energy = energy_temp
@@ -1209,7 +1210,8 @@ class Agent:
 							
 							self.current.pose.set_phi(i+1, phi)
 							self.current.pose.set_psi(i+1, psi)
-							energy_temp = self.current.calculate_energy()
+							self.current.calculate_energy()
+							energy_temp = self.current.energy_value
 							
 							if energy_temp < best_energy:
 								best_energy = energy_temp
