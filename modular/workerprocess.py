@@ -221,7 +221,7 @@ class WorkerProcess(Process):
 				if self.agent.leader_pockets[0] != None:
 					index_pocket_leader_agent = self.fitness_roulette_selection(self.agent.leader_pockets)
 					index_pocket_self_agent = self.select_rand_solution(self.agent.pockets)
-					self.agent.crossover_new(self.agent.leader_pockets[index_pocket_leader_agent], self.agent.pockets[index_pocket_self_agent], self.config.crossover_prob)
+					self.agent.crossover(self.agent.leader_pockets[index_pocket_leader_agent], self.agent.pockets[index_pocket_self_agent], self.config.crossover_prob)
 			else:
 				index_pocket_self_agent = self.select_rand_solution(self.agent.pockets)
 				self.agent.current = copy.deepcopy(self.agent.pockets[index_pocket_self_agent])
