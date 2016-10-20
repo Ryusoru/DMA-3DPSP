@@ -291,14 +291,14 @@ class WorkerProcess(Process):
 				if self.agent.leader_pockets[0] != None:
 					index_pocket_leader_agent = self.fitness_roulette_selection(self.agent.leader_pockets)
 					index_pocket_self_agent = self.select_rand_solution(self.agent.pockets)
-					self.agent.crossover_new(self.agent.leader_pockets[index_pocket_leader_agent], self.agent.pockets[index_pocket_self_agent], self.config.crossover_prob)
+					self.agent.crossover(self.agent.leader_pockets[index_pocket_leader_agent], self.agent.pockets[index_pocket_self_agent], self.config.crossover_prob)
 			else:
 				index_pocket_self_agent = self.select_rand_solution(self.agent.pockets)
 				self.agent.current = copy.deepcopy(self.agent.pockets[index_pocket_self_agent])
 			
 			# Local search
 			time_ls_start = datetime.datetime.now()
-			self.agent.simulated_annealing_original(self.config.ls_prob_ss, self.config.test_ls_fact, self.config.test_jump_prob, jump_radius_aux, self.config.test_temp_init, self.hist_obj)
+			self.agent.simulated_annealing(self.config.ls_prob_ss, self.config.test_ls_fact, self.config.test_jump_prob, jump_radius_aux, self.config.test_temp_init, self.hist_obj)
 			self.agent.time_ls += datetime.datetime.now() - time_ls_start
 			jump_radius_aux = jump_radius_aux * self.config.test_jump_fact
 			
