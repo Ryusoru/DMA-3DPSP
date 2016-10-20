@@ -42,6 +42,7 @@ class Config:
 		
 		self.sequences_path = 'Sequences'
 		self.histograms_path = 'Histograms'
+		self.logs_path = 'Logs'
 		self.results_path = 'Results'
 		self.use_angle_range = False
 		self.prob_radius = 0.5
@@ -54,7 +55,8 @@ class Config:
 		self.test_jump_fact = 0.85
 		self.test_temp_init = 2000
 		self.test_jump_dist = 180
-		self.ls_prob_ss = [0.1 for i in range (0,7)]
+		self.ls_prob_ss = [0.9 for i in range (0,7)]
+		self.calculate_ls_probs = False
 	
 	def set_ls_probs(self, sequence):
 		count_ss_B = 0
@@ -104,6 +106,8 @@ class Config:
 				self.sequences_path = str(line[16:].rstrip())
 			elif line.startswith('histograms_path:'):
 				self.histograms_path = str(line[17:].rstrip())
+			elif line.startswith('logs_path:'):
+				self.logs_path = str(line[11:].rstrip())
 			elif line.startswith('results_path:'):
 				self.results_path = str(line[14:].rstrip())
 			
@@ -146,6 +150,12 @@ class Config:
 			elif line.startswith('ls_prob_T:'):
 				self.ls_prob_ss[6] = float(line[11:])
 			
+			elif line.startswith('calculate_ls_probs:'):
+				if line[20:].rstrip() == 'True':
+					self.calculate_ls_probs = True
+				if line[20:].rstrip() == 'False':
+					self.calculate_ls_probs = False
+			
 			else:
 				print 'Bad format in the configuration file'
 				sys.exit()
@@ -169,7 +179,8 @@ def main():
 	sequence = Sequence(config.protein, error, config.sequences_path)
 	sequence.read_sequence()
 	
-	config.set_ls_probs(sequence)
+	if config.calculate_ls_probs:
+		config.set_ls_probs(sequence)
 	
 	hist_obj = HistogramFiles(sequence, error, config.use_angle_range, config.prob_radius, config.histograms_path)
 	hist_obj.read_histograms()
