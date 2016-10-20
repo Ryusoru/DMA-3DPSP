@@ -133,11 +133,15 @@ class LaunchTests:
 
 		test_run = 0
 		log_id = 1
+		logs_path = 'Logs/'
+		
+		if not os.path.exists(logs_path):
+			os.makedirs(logs_path)
 
 		while not (len(self.tests) == 0):
 			if test_run < self.tests_concurrent:
 				test_protein = self.tests.pop()
-				cmd = 'python memetic_parallel.py %s 0 %d > memetic_parallel_%03d_agent-00.log 2>&1' % (test_protein, log_id, log_id)
+				cmd = 'python memetic_parallel.py %s 0 %d > %smemetic_parallel_%03d_agent-00.log 2>&1' % (test_protein, log_id, logs_path, log_id)
 				logging.info(INFO_SEQ + cmd + RESET_SEQ)
 				subprocess.Popen(cmd, shell = True)
 				test_run += 1
@@ -146,7 +150,7 @@ class LaunchTests:
 			if(test_run > 0):
 				os.wait()
 				test_protein = self.tests.pop()
-				cmd = 'python memetic_parallel.py %s 0 %d > memetic_parallel_%03d_agent-00.log 2>&1' % (test_protein, log_id, log_id)
+				cmd = 'python memetic_parallel.py %s 0 %d > %smemetic_parallel_%03d_agent-00.log 2>&1' % (test_protein, log_id, logs_path, log_id)
 				logging.info(INFO_SEQ + cmd + RESET_SEQ)
 				subprocess.Popen(cmd, shell = True)
 				log_id += 1

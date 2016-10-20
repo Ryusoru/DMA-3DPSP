@@ -236,10 +236,13 @@ class WorkerProcess(Process):
 			self.support_stop_event[i] = servers[i].get_stop_event()
 			self.support_energy_number[i] = servers[i].get_energy_number()
 			
+			if not os.path.exists(self.config.logs_path):
+				os.makedirs(self.config.logs_path)
+			
 			argv = (str(self.config.protein) + ' ' + str(self.config.num_levels) + ' ' + str(self.config.num_sup) + ' ' + str(self.config.max_agents) + ' ' +
 					str(self.config.num_pockets) + ' ' + str(self.config.if_reset) + ' ' + str(self.config.test_noimprove) + ' ' + str(self.config.score_weight) + ' ' +
 					str(self.config.sasa_weight) + ' ' + str(self.config.energy_limit) + ' ' + str(self.agent.id_supporters[i]))
-			cmd = 'python memetic_parallel.py %s %d > memetic_parallel_%03d_agent-%02d.log 2>&1' % (argv, self.log_id, self.log_id, self.agent.id_supporters[i])
+			cmd = 'python memetic_parallel.py %s %d > %s/memetic_parallel_%03d_agent-%02d.log 2>&1' % (argv, self.log_id, self.config.logs_path, self.log_id, self.agent.id_supporters[i])
 			subprocess.Popen(['ssh', host, 'cd ' + path + ' && ' + cmd], stdin = None, stdout = None, stderr = None)
 		return servers
 	
