@@ -64,7 +64,7 @@ class Agent:
 			f.write('\n')
 		f.close()
 	
-	def diversity(self, agent_pocket_1, agent_pocket_2):
+	def diversity_old(self, agent_pocket_1, agent_pocket_2):
 		# This function isnt considering the first and last residue
 		aux = 0
 		primary_len = len(agent_pocket_1.pose.sequence())
@@ -89,29 +89,42 @@ class Agent:
 		
 		return aux / (primary_len - 2)
 	
+	def diversity(self, agent_pocket_1, agent_pocket_2):
+		div = CA_rmsd(agent_pocket_1.pose, agent_pocket_2.pose, 3, len(agent_pocket_1.pose.sequence())-2)
+		return div
+	
 	def update(self, solution = None):
 		if solution == None:
 			solution = self.current
 		pocket_worst = -1
 		div_flag = True
+		div_worst = -1
 		i = 0
-		div_parameter = len(solution.pose.sequence()) * 6.0
-		# div_parameter = 7
+		div_parameter = 2
+		# div_parameter = len(solution.pose.sequence()) * 6.0
 		for pocket in self.pockets:
 			if pocket == None:
-				if pocket_worst == -1 or div_flag:
+				if div_flag:
 					pocket_worst = i
 				break
 			else:
 				if solution.energy_value <= pocket.energy_value:
 					div = self.diversity(solution, pocket)
-				# Change introduced by Ivan and Mario on 1-04-2016 to fullfill replace rules
-					if div >= div_parameter and div_flag:
-						pocket_worst = i
+				# Change introduced by Ivan and Mario on 1-04-2016 to fullfill replace rules. Updated by Ivan on 20-10-2016 to add diversity by RMSD and fix error in replacements
+					if div >= div_parameter:
+						if div_flag:
+							pocket_worst = i
 				#	elif div < div_parameter and div > 0:
 					else:
-						div_flag = False
-						pocket_worst = i
+						if div_flag:
+							div_worst = div
+							div_flag = False
+							pocket_worst = i
+						else:
+							if div <= div_worst:
+								div_worst = div
+								div_flag = False
+								pocket_worst = i
 				#	else:
 				#		pocket_worst = -1
 				#		break
