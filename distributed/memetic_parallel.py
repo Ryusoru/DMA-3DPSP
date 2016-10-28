@@ -59,7 +59,8 @@ class Config:
 		self.calculate_ls_probs = False
 		
 		self.calculate_div_density = False
-		self.hosts = [['127.0.0.1', 5000, ''] for i in range(0, self.num_agents)]
+		self.hosts = [['127.0.0.1', 20000, ''] for i in range(0, self.num_agents)]
+		self.div_hosts = [['127.0.0.1', 20000, ''] for i in range(0, self.num_agents)]
 	
 	def set_ls_probs(self, sequence):
 		count_ss_B = 0
@@ -213,7 +214,14 @@ class Config:
 						self.hosts[int(agent)][0] = host
 				#		self.hosts[int(agent)][1] = int(ports[i])
 						self.hosts[int(agent)][1] = 20000 + ((log_id - 1) * self.num_agents) + int(agent)
+						self.hosts[int(agent)][1] = 20000 + ((log_id - 1) * self.num_agents) + int(agent)
 						self.hosts[int(agent)][2] = path
+						
+						self.root_hosts[int(agent)][0] = host
+				#		self.root_hosts[int(agent)][1] = int(ports[i])
+						self.root_hosts[int(agent)][1] = 20000 - ((log_id - 1) * self.num_agents) - int(agent)
+						self.root_hosts[int(agent)][1] = 20000 - ((log_id - 1) * self.num_agents) - int(agent)
+						self.root_hosts[int(agent)][2] = path
 				#	i += 1
 			
 			else:
