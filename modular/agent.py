@@ -8,6 +8,7 @@ import datetime
 import textwrap
 import itertools
 import traceback
+import numpy
 from math import *
 
 from solution import *
@@ -15,21 +16,28 @@ from solution import *
 
 class Agent:
 	def __init__(self, id, config, sequence):
-		self.id 			= id
-		self.id_supporters 	= [id * config.num_sup + i for i in range(1, config.num_sup+1)] if id * config.num_sup + 1 < config.num_agents else None
-		self.id_leader		= int((id-1) / config.num_sup) if id > 0 else None
-		self.pockets 		= [None for i in range(0, config.num_pockets)]
-		self.leader_pockets	= [None for i in range(0, config.num_pockets)]
-		self.current 		= Solution(config, sequence)
-		self.sequence		= sequence
-		self.generation 	= 0
-		self.restarts		= 0
-		self.time_ls		= datetime.timedelta(0)
-		self.time_send		= datetime.timedelta(0)
-		self.time_receive	= datetime.timedelta(0)
-		self.trx_send		= 0
-		self.trx_receive	= 0
-		self.status_log		= []
+		self.id 				= id
+		self.config				= config
+		self.id_supporters 		= [id * config.num_sup + i for i in range(1, config.num_sup+1)] if id * config.num_sup + 1 < config.num_agents else None
+		self.id_leader			= int((id-1) / config.num_sup) if id > 0 else None
+		self.pockets 			= [None for i in range(0, config.num_pockets)]
+		self.leader_pockets		= [None for i in range(0, config.num_pockets)]
+		self.supporter_pockets	= [[None for i in range(0, config.num_pockets)] for i in range(1, config.num_sup+1)] if self.id_supporters else None
+		self.population_pockets	= [[None for i in range(0, config.num_pockets)] for i in range(1, config.num_agents)] if self.id_leader == None else None
+		self.den_pockets		= 0
+		self.den_subpopulation	= 0 if self.id_supporters else None
+		self.den_population 	= 0 if self.id_leader == None else None
+		self.current 			= Solution(config, sequence)
+		self.sequence			= sequence
+		self.generation 		= 0
+		self.restarts			= 0
+		self.time_ls			= datetime.timedelta(0)
+		self.time_send			= datetime.timedelta(0)
+		self.time_receive		= datetime.timedelta(0)
+		self.time_div			= datetime.timedelta(0)
+		self.trx_send			= 0
+		self.trx_receive		= 0
+		self.status_log			= []
 	
 	def __str__(self):
 		return  textwrap.dedent('''\
@@ -38,13 +46,19 @@ class Agent:
 				--- supporters: %s
 				--- current_energy: %s
 				--- pockets_energy: %s
-				--- leader_pockets: %s''' % (
+				--- leader_pockets: %s
+				--- den_pockets: %s
+				--- den_subpopulation: %s
+				--- den_population: %s''' % (
 					self.id,
 					str(self.id_leader),
 					str(self.id_supporters),
 					str(self.current),
 					str(self.pockets),
-					str(self.leader_pockets)
+					str(self.leader_pockets),
+					str(self.den_pockets),
+					str(self.den_subpopulation),
+					str(self.den_population)
 					)
 				)
 	
@@ -54,7 +68,8 @@ class Agent:
 	def status_log_append(self, time, energy_calls):
 		self.status_log.append([str(self.pockets[0]), self.trx_send, self.trx_receive, self.total_seconds(self.time_send), self.total_seconds(self.time_receive),
 								self.generation, self.restarts, self.total_seconds(self.time_ls), energy_calls, str(self.pockets[0].score), str(self.pockets[0].sasa),
-								self.total_seconds(self.pockets[0].t_score), self.total_seconds(self.pockets[0].t_sasa), self.total_seconds(self.pockets[0].t_total), self.total_seconds(time)])
+								self.total_seconds(self.pockets[0].t_score), self.total_seconds(self.pockets[0].t_sasa), self.total_seconds(self.pockets[0].t_total), self.total_seconds(time),
+								str(self.den_pockets), str(self.den_subpopulation), str(self.den_population), self.total_seconds(self.time_div)])
 	
 	def status_write(self, status_log_file_path):
 		f = open(status_log_file_path, 'a')
@@ -92,6 +107,52 @@ class Agent:
 	def diversity(self, agent_pocket_1, agent_pocket_2):
 		div = CA_rmsd(agent_pocket_1.pose, agent_pocket_2.pose, 3, len(agent_pocket_1.pose.sequence())-2)
 		return div
+	
+	def calculate_densities(self):
+		pockets_rmsd = []
+		num_pockets = len(filter(lambda p: p!=None, self.pockets))
+		
+		for i in range(0, num_pockets):
+			for j in range(i+1, num_pockets):
+				rmsd = self.diversity(self.pockets[i], self.pockets[j])
+				pockets_rmsd.append(rmsd)
+		
+		self.den_pockets = numpy.std(pockets_rmsd) / abs(numpy.mean(pockets_rmsd))
+		# print '\n> Agent %d calculate pockets density:\n>> Pockets: %s\n>> Pockets diversity: %s\n>> Pockets density: %s\n' % (self.id, filter(lambda p: p!=None, self.pockets), pockets_rmsd, self.den_pockets)
+		
+		if self.id_supporters:
+			subpopulation_pockets = []
+			subpopulation_pockets += filter(lambda p: p!=None, self.pockets)
+			for i in range(0, self.config.num_sup):
+				subpopulation_pockets += filter(lambda p: p!=None, self.supporter_pockets[i])
+			
+			subpopulation_rmsd = []
+			num_pockets = len(subpopulation_pockets)
+			
+			for i in range(0, num_pockets):
+				for j in range(i+1, num_pockets):
+					rmsd = self.diversity(subpopulation_pockets[i], subpopulation_pockets[j])
+					subpopulation_rmsd.append(rmsd)
+			
+			self.den_subpopulation = numpy.std(subpopulation_rmsd) / abs(numpy.mean(subpopulation_rmsd))
+			# print '\n> Agent %d calculate subpopulation density:\n>> Pockets: %s\n>> Pockets diversity: %s\n>> Subpopulation density: %s\n' % (self.id, subpopulation_pockets, subpopulation_rmsd, self.den_subpopulation)
+		
+		if self.id_leader == None:
+			population_pockets = []
+			population_pockets += filter(lambda p: p!=None, self.pockets)
+			for i in range(0, self.config.num_agents-1):
+				population_pockets += filter(lambda p: p!=None, self.population_pockets[i])
+			
+			population_rmsd = []
+			num_pockets = len(population_pockets)
+			
+			for i in range(0, num_pockets):
+				for j in range(i+1, num_pockets):
+					rmsd = self.diversity(population_pockets[i], population_pockets[j])
+					population_rmsd.append(rmsd)
+			
+			self.den_population = numpy.std(population_rmsd) / abs(numpy.mean(population_rmsd))
+			# print '\n> Agent %d calculate population density:\n>> Pockets: %s\n>> Pockets diversity: %s\n>> Population density: %s\n' % (self.id, population_pockets, population_rmsd, self.den_population)
 	
 	def update(self, solution = None):
 		if solution == None:

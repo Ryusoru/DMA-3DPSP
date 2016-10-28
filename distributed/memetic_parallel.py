@@ -58,6 +58,7 @@ class Config:
 		self.ls_prob_ss = [0.9 for i in range (0,7)]
 		self.calculate_ls_probs = False
 		
+		self.calculate_div_density = False
 		self.hosts = [['127.0.0.1', 5000, ''] for i in range(0, self.num_agents)]
 	
 	def set_ls_probs(self, sequence):
@@ -157,6 +158,12 @@ class Config:
 					self.calculate_ls_probs = True
 				if line[20:].rstrip() == 'False':
 					self.calculate_ls_probs = False
+			
+			elif line.startswith('calculate_div_density:'):
+				if line[23:].rstrip() == 'True':
+					self.calculate_div_density = True
+				if line[23:].rstrip() == 'False':
+					self.calculate_div_density = False
 			
 			else:
 				print 'Bad format in the configuration file'

@@ -28,6 +28,10 @@ class WorkerProcess(Process):
 		self.leader_recv = None
 		self.support_send = [None for i in range(0, self.config.num_sup)] if id * self.config.num_sup + 1 < self.config.num_agents else None
 		self.support_recv = [None for i in range(0, self.config.num_sup)] if id * self.config.num_sup + 1 < self.config.num_agents else None
+		self.root_div_send = None
+		self.leader_div_send = None
+		self.agent_div_recv = [None for i in range(1, self.config.num_agents)] if self.agent.id_leader == None else None
+		self.support_div_recv = [None for i in range(1, self.config.num_sup+1)] if self.agent.id_supporters else None
 		self.leader_reset_send = None
 		self.leader_reset_recv = None
 		self.support_reset_send = [None for i in range(0, self.config.num_sup)] if id * self.config.num_sup + 1 < self.config.num_agents else None
@@ -169,6 +173,8 @@ class WorkerProcess(Process):
 		fout.write('Total restarts of agent_%02d: %d\n' % (self.id, self.agent.restarts))
 		print 'Total time LocalSearch of agent_%02d: %s' % (self.id, str(self.agent.time_ls))
 		fout.write( 'Total time LocalSearch of agent_%02d: %s\n' % (self.id, str(self.agent.time_ls)))
+		print 'Total time Diversity calculations of agent_%02d: %s' % (self.id, str(self.agent.time_div))
+		fout.write( 'Total time Diversity calculations of agent_%02d: %s\n' % (self.id, str(self.agent.time_div)))
 		print 'Total time SEND of agent_%02d: %s' % (self.id, str(self.agent.time_send))
 		fout.write( 'Total time SEND of agent_%02d: %s\n' % (self.id, str(self.agent.time_send)))
 		print 'Total transactions SEND of agent_%02d: %s' % (self.id, str(self.agent.trx_send))
@@ -185,6 +191,7 @@ class WorkerProcess(Process):
 	def make_server_manager(self, port, authkey):
 		queue_send = Queue(1)
 		queue_recv = Queue()
+		queue_div_recv = Queue(1)
 		queue_reset_send = Queue(1)
 		queue_reset_recv = Queue(1)
 		stop_event = Event()
@@ -195,6 +202,7 @@ class WorkerProcess(Process):
 
 		ServerManager.register('get_queue_send', callable=lambda: queue_send)
 		ServerManager.register('get_queue_recv', callable=lambda: queue_recv)
+		ServerManager.register('get_queue_div_recv', callable=lambda: queue_div_recv)
 		ServerManager.register('get_queue_reset_send', callable=lambda: queue_reset_send)
 		ServerManager.register('get_queue_reset_recv', callable=lambda: queue_reset_recv)
 		ServerManager.register('get_stop_event', callable=lambda: stop_event)
@@ -205,6 +213,15 @@ class WorkerProcess(Process):
 		print 'Agent %d server started at port %d' % (self.id, port)
 		return manager
 	
+	def make_div_server_manager(self, port, authkey):
+		queue_div_recv = Queue()
+		class ServerManager(SyncManager):
+			pass
+		ServerManager.register('get_queue_div_recv', callable=lambda: queue_div_recv)
+		manager = ServerManager(address=('', port), authkey=authkey)
+		manager.start()
+		return manager
+	
 	
 	def make_client_manager(self, host, port, authkey):
 		class ClientManager(SyncManager):
@@ -212,6 +229,7 @@ class WorkerProcess(Process):
 
 		ClientManager.register('get_queue_send')
 		ClientManager.register('get_queue_recv')
+		ClientManager.register('get_queue_div_recv')
 		ClientManager.register('get_queue_reset_send')
 		ClientManager.register('get_queue_reset_recv')
 		ClientManager.register('get_stop_event')
@@ -222,8 +240,25 @@ class WorkerProcess(Process):
 		print 'Agent %d client connected to %s at port %d ' % (self.id, host, port)
 		return manager
 	
+	def make_div_client_manager(self, host, port, authkey):
+		class ClientManager(SyncManager):
+			pass
+		ClientManager.register('get_queue_div_recv')
+		manager = ClientManager(address=(host, port), authkey=authkey)
+		manager.connect()
+		return manager
+	
 	def run_servers(self):
 		servers = [None for i in range(0, self.config.num_sup)]
+		
+		if self.agent.id_leader == None:
+			div_servers = [None for i in range(1, self.config.num_agents)]
+			for i in range(1, self.config.num_agents):
+				port = self.config.hosts[self.id][1] - i
+				div_servers[i-1] = self.make_div_server_manager(port, '')
+				self.agent_div_recv[i-1] = div_servers[i-1].get_queue_div_recv()
+				servers += div_servers
+		
 		for i in range(0, self.config.num_sup):
 			host = self.config.hosts[self.agent.id_supporters[i]][0]
 			port = self.config.hosts[self.agent.id_supporters[i]][1]
@@ -231,6 +266,7 @@ class WorkerProcess(Process):
 			servers[i] = self.make_server_manager(port, '')
 			self.support_send[i] = servers[i].get_queue_send()
 			self.support_recv[i] = servers[i].get_queue_recv()
+			self.support_div_recv[i] = servers[i].get_queue_div_recv()
 			self.support_reset_send[i] = servers[i].get_queue_reset_send()
 			self.support_reset_recv[i] = servers[i].get_queue_reset_recv()
 			self.support_stop_event[i] = servers[i].get_stop_event()
@@ -244,14 +280,20 @@ class WorkerProcess(Process):
 					str(self.config.sasa_weight) + ' ' + str(self.config.energy_limit) + ' ' + str(self.agent.id_supporters[i]))
 			cmd = 'python memetic_parallel.py %s %d > %s/memetic_parallel_%03d_agent-%02d.log 2>&1' % (argv, self.log_id, self.config.logs_path, self.log_id, self.agent.id_supporters[i])
 			subprocess.Popen(['ssh', host, 'cd ' + path + ' && ' + cmd], stdin = None, stdout = None, stderr = None)
+		
 		return servers
 	
 	def run_client(self):
 		host = self.config.hosts[self.agent.id_leader][0]
 		port = self.config.hosts[self.id][1]
+		root_host = self.config.hosts[0][0]
+		root_port = self.config.hosts[0][1] - self.id
 		client = self.make_client_manager(host, port, '')
+		root_client = self.make_div_client_manager(root_host, root_port, '')
 		self.leader_send = client.get_queue_recv()
 		self.leader_recv = client.get_queue_send()
+		self.root_div_send = root_client.get_queue_div_recv()
+		self.leader_div_send = client.get_queue_div_recv()
 		self.leader_reset_send = client.get_queue_reset_recv()
 		self.leader_reset_recv = client.get_queue_reset_send()
 		self.stop_event = client.get_stop_event()
@@ -331,6 +373,60 @@ class WorkerProcess(Process):
 						if not self.leader_send.full():
 							print '> WorkerProcess %d send a pocket to leader %d with energy: %d' % (self.id, self.agent.id_leader, self.agent.pockets[0].energy_value)
 							self.send_solution_pickle(self.agent.pockets[0], self.leader_send)
+			
+			if self.config.calculate_div_density:
+				# Diversity density calculations
+				time_div_start = datetime.datetime.now()
+
+				if self.agent.id_leader == None:
+					for i in range(0, self.config.num_agents-1):
+						if not self.agent_div_recv[i].empty():
+							buff = self.agent_div_recv[i].get()
+							agent_pockets = pickle.loads(buff)
+							j = 0
+							for p in agent_pockets:
+								if p != None:
+									self.agent.population_pockets[i][j] = copy.deepcopy(p)
+								else:
+									break
+								j += 1
+
+					if self.agent.id_supporters:
+						for i in range(0, self.config.num_sup):
+							if not self.support_div_recv[i].empty():
+								buff = self.support_div_recv[i].get()
+								supporter_pockets = pickle.loads(buff)
+								j = 0
+								for p in supporter_pockets:
+									if p != None:
+										self.agent.supporter_pockets[i][j] = copy.deepcopy(p)
+									else:
+										break
+									j += 1
+				else:
+					if not self.root_div_send.full():
+						buff = pickle.dumps(self.agent.pockets, 2)
+						self.root_div_send.put(buff)
+
+					if not self.leader_div_send.full():
+						buff = pickle.dumps(self.agent.pockets, 2)
+						self.leader_div_send.put(buff)
+
+					if self.agent.id_supporters:
+						for i in range(0, self.config.num_sup):
+							if not self.support_div_recv[i].empty():
+								buff = self.support_div_recv[i].get()
+								supporter_pockets = pickle.loads(buff)
+								j = 0
+								for p in supporter_pockets:
+									if p != None:
+										self.agent.supporter_pockets[i][j] = copy.deepcopy(p)
+									else:
+										break
+									j += 1
+
+				self.agent.calculate_densities()
+				self.agent.time_div += datetime.datetime.now() - time_div_start
 
 			self.agent.generation += 1
 			
@@ -392,6 +488,10 @@ class WorkerProcess(Process):
 					if self.agent.id_leader == None:
 						# Only the root leader can keep the best solution
 						self.agent.pockets = [self.agent.pockets[0]] + [None for i in range(1, self.config.num_pockets)]
+						self.agent.population_pockets = [[None for i in range(0, self.config.num_pockets)] for i in range(1, self.config.num_agents)]
+						for i in range(0, self.config.num_agents-1):
+							if not self.agent_div_recv[i].empty():
+								self.agent_div_recv[i].get()
 					else:
 						self.agent.pockets = [None for i in range(0, self.config.num_pockets)]
 						self.agent.leader_pockets = [None for i in range(0, self.config.num_pockets)]
@@ -402,6 +502,12 @@ class WorkerProcess(Process):
 						for i in range(0, self.config.num_sup):
 							while not self.support_recv[i].empty():
 								self.support_recv[i].get()
+						
+						self.agent.supporter_pockets = [[None for i in range(0, self.config.num_pockets)] for i in range(1, self.config.num_sup+1)]
+						for i in range(0, self.config.num_sup):
+							if not self.support_div_recv[i].empty():
+								self.support_div_recv[i].get()
+						
 					self.agent.restarts += 1
 
 					print 'RESTARTING %3d - WorkerProcess %2d - %s' % (self.agent.restarts, self.id, self.agent)
@@ -446,6 +552,10 @@ class WorkerProcess(Process):
 		if self.agent.id_supporters:
 			for i in range(0, self.config.num_sup):
 				self.support_reset_recv[i].get()
+				servers[i].shutdown()
+		
+		if self.agent.id_leader == None:
+			for i in range(3, self.config.num_agents-1):
 				servers[i].shutdown()
 		
 		print '\n************ WorkerProcess %d done ************\n' % (self.id)

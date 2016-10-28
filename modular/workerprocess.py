@@ -12,7 +12,7 @@ from agent import *
 
 
 class WorkerProcess(Process):
-	def __init__(self, id, leader_send, leader_recv, leader_reset_send, leader_reset_recv, config, sequence, hist_obj, energy_list, stop_event, results_path):
+	def __init__(self, id, leader_send, leader_recv, root_div_send, leader_div_send, leader_reset_send, leader_reset_recv, config, sequence, hist_obj, energy_list, stop_event, results_path):
 		Process.__init__(self)
 		self.id = id
 		self.config = config
@@ -23,6 +23,10 @@ class WorkerProcess(Process):
 		self.leader_recv = leader_recv
 		self.support_send = [Queue(1) for i in range(1, self.config.num_sup+1)] if id * self.config.num_sup + 1 < self.config.num_agents else None
 		self.support_recv = Queue() if id * self.config.num_sup + 1 < self.config.num_agents else None
+		self.root_div_send = root_div_send
+		self.leader_div_send = leader_div_send
+		self.agent_div_recv = [Queue(1) for i in range(1, self.config.num_agents)] if self.agent.id_leader == None else None
+		self.support_div_recv = [Queue(1) for i in range(1, self.config.num_sup+1)] if self.agent.id_supporters else None
 		self.leader_reset_send = leader_reset_send
 		self.leader_reset_recv = leader_reset_recv
 		self.support_reset_send = [Queue(1) for i in range(1, self.config.num_sup+1)] if id * self.config.num_sup + 1 < self.config.num_agents else None
@@ -163,6 +167,8 @@ class WorkerProcess(Process):
 		fout.write('Total restarts of agent_%02d: %d\n' % (self.id, self.agent.restarts))
 		print 'Total time LocalSearch of agent_%02d: %s' % (self.id, str(self.agent.time_ls))
 		fout.write( 'Total time LocalSearch of agent_%02d: %s\n' % (self.id, str(self.agent.time_ls)))
+		print 'Total time Diversity calculations of agent_%02d: %s' % (self.id, str(self.agent.time_div))
+		fout.write( 'Total time Diversity calculations of agent_%02d: %s\n' % (self.id, str(self.agent.time_div)))
 		print 'Total time SEND of agent_%02d: %s' % (self.id, str(self.agent.time_send))
 		fout.write( 'Total time SEND of agent_%02d: %s\n' % (self.id, str(self.agent.time_send)))
 		print 'Total transactions SEND of agent_%02d: %s' % (self.id, str(self.agent.trx_send))
@@ -189,11 +195,21 @@ class WorkerProcess(Process):
 			stop_event = manager.Event()
 			
 			for i in range(0, self.config.num_sup):
-				workers.append(WorkerProcess(self.agent.id_supporters[i], self.support_recv, self.support_send[i], self.support_reset_recv[i], self.support_reset_send[i],
-											 self.config, self.sequence, self.hist_obj, self.energy_list, stop_event, self.results_path))
+				if self.agent.id_leader == None:
+					workers.append(WorkerProcess(self.agent.id_supporters[i], self.support_recv, self.support_send[i], self.agent_div_recv, self.support_div_recv[i], self.support_reset_recv[i], self.support_reset_send[i],
+												 self.config, self.sequence, self.hist_obj, self.energy_list, stop_event, self.results_path))
+				else:
+					workers.append(WorkerProcess(self.agent.id_supporters[i], self.support_recv, self.support_send[i], self.root_div_send, self.support_div_recv[i], self.support_reset_recv[i], self.support_reset_send[i],
+												 self.config, self.sequence, self.hist_obj, self.energy_list, stop_event, self.results_path))
 			
 			for worker in workers:
 				worker.start()
+		
+		else:
+			if self.agent.id_leader == None:
+				self.energy_list = [0]
+				self.stop_event = Event()
+			
 		
 		jump_radius_aux = self.config.test_jump_dist
 		self.agent.current.init_solution(self.hist_obj)
@@ -260,6 +276,60 @@ class WorkerProcess(Process):
 						if not self.leader_send.full():
 							print '> WorkerProcess %d send a pocket to leader %d with energy: %d' % (self.id, self.agent.id_leader, self.agent.pockets[0].energy_value)
 							self.send_solution_pickle(self.agent.pockets[0], self.leader_send)
+			
+			if self.config.calculate_div_density:
+				# Diversity density calculations
+				time_div_start = datetime.datetime.now()
+
+				if self.agent.id_leader == None:
+					for i in range(0, self.config.num_agents-1):
+						if not self.agent_div_recv[i].empty():
+							buff = self.agent_div_recv[i].get()
+							agent_pockets = pickle.loads(buff)
+							j = 0
+							for p in agent_pockets:
+								if p != None:
+									self.agent.population_pockets[i][j] = copy.deepcopy(p)
+								else:
+									break
+								j += 1
+
+					if self.agent.id_supporters:
+						for i in range(0, self.config.num_sup):
+							if not self.support_div_recv[i].empty():
+								buff = self.support_div_recv[i].get()
+								supporter_pockets = pickle.loads(buff)
+								j = 0
+								for p in supporter_pockets:
+									if p != None:
+										self.agent.supporter_pockets[i][j] = copy.deepcopy(p)
+									else:
+										break
+									j += 1
+				else:
+					if not self.root_div_send[self.id-1].full():
+						buff = pickle.dumps(self.agent.pockets, 2)
+						self.root_div_send[self.id-1].put(buff)
+
+					if not self.leader_div_send.full():
+						buff = pickle.dumps(self.agent.pockets, 2)
+						self.leader_div_send.put(buff)
+
+					if self.agent.id_supporters:
+						for i in range(0, self.config.num_sup):
+							if not self.support_div_recv[i].empty():
+								buff = self.support_div_recv[i].get()
+								supporter_pockets = pickle.loads(buff)
+								j = 0
+								for p in supporter_pockets:
+									if p != None:
+										self.agent.supporter_pockets[i][j] = copy.deepcopy(p)
+									else:
+										break
+									j += 1
+
+				self.agent.calculate_densities()
+				self.agent.time_div += datetime.datetime.now() - time_div_start
 
 			self.agent.generation += 1
 			
@@ -321,6 +391,10 @@ class WorkerProcess(Process):
 					if self.agent.id_leader == None:
 						# Only the root leader can keep the best solution
 						self.agent.pockets = [self.agent.pockets[0]] + [None for i in range(1, self.config.num_pockets)]
+						self.agent.population_pockets = [[None for i in range(0, self.config.num_pockets)] for i in range(1, self.config.num_agents)]
+						for i in range(0, self.config.num_agents-1):
+							if not self.agent_div_recv[i].empty():
+								self.agent_div_recv[i].get()
 					else:
 						self.agent.pockets = [None for i in range(0, self.config.num_pockets)]
 						self.agent.leader_pockets = [None for i in range(0, self.config.num_pockets)]
@@ -330,6 +404,12 @@ class WorkerProcess(Process):
 					if self.agent.id_supporters:
 						while not self.support_recv.empty():
 							self.support_recv.get()
+						
+						self.agent.supporter_pockets = [[None for i in range(0, config.num_pockets)] for i in range(1, config.num_sup+1)]
+						for i in range(0, self.config.num_sup):
+							if not self.support_div_recv[i].empty():
+								self.support_div_recv[i].get()
+						
 					self.agent.restarts += 1
 
 					print 'RESTARTING %3d - WorkerProcess %2d - %s' % (self.agent.restarts, self.id, self.agent)
@@ -356,6 +436,8 @@ class WorkerProcess(Process):
 			stop_event.set()
 		if self.agent.id_leader != None:
 			self.leader_send.cancel_join_thread()
+			self.root_div_send[self.id-1].cancel_join_thread()
+			self.leader_div_send.cancel_join_thread()
 		
 		self.save_results()
 		

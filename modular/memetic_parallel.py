@@ -57,6 +57,8 @@ class Config:
 		self.test_jump_dist = 180
 		self.ls_prob_ss = [0.9 for i in range (0,7)]
 		self.calculate_ls_probs = False
+		
+		self.calculate_div_density = False
 	
 	def set_ls_probs(self, sequence):
 		count_ss_B = 0
@@ -156,6 +158,12 @@ class Config:
 				if line[20:].rstrip() == 'False':
 					self.calculate_ls_probs = False
 			
+			elif line.startswith('calculate_div_density:'):
+				if line[23:].rstrip() == 'True':
+					self.calculate_div_density = True
+				if line[23:].rstrip() == 'False':
+					self.calculate_div_density = False
+			
 			else:
 				print 'Bad format in the configuration file'
 				sys.exit()
@@ -185,7 +193,7 @@ def main():
 	hist_obj = HistogramFiles(sequence, error, config.use_angle_range, config.prob_radius, config.histograms_path)
 	hist_obj.read_histograms()
 	
-	worker = WorkerProcess(0, None, None, None, None, config, sequence, hist_obj, None, None, results_path)
+	worker = WorkerProcess(0, None, None, None, None, None, None, config, sequence, hist_obj, None, None, results_path)
 	
 	start_time = datetime.datetime.now()
 	worker.start()
