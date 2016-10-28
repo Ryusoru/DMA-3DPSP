@@ -60,7 +60,7 @@ class Config:
 		
 		self.calculate_div_density = False
 		self.hosts = [['127.0.0.1', 20000, ''] for i in range(0, self.num_agents)]
-		self.div_hosts = [['127.0.0.1', 20000, ''] for i in range(0, self.num_agents)]
+		self.root_hosts = [['127.0.0.1', 20000, ''] for i in range(0, self.num_agents)]
 	
 	def set_ls_probs(self, sequence):
 		count_ss_B = 0
