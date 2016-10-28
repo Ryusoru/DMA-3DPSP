@@ -212,7 +212,7 @@ class Config:
 					if int(agent) < self.num_agents:
 						self.hosts[int(agent)][0] = host
 				#		self.hosts[int(agent)][1] = int(ports[i])
-						self.hosts[int(agent)][1] = 5000 + ((log_id - 1) * self.num_agents) + int(agent)
+						self.hosts[int(agent)][1] = 20000 + ((log_id - 1) * self.num_agents) + int(agent)
 						self.hosts[int(agent)][2] = path
 				#	i += 1
 			
