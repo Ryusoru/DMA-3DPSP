@@ -254,7 +254,7 @@ class WorkerProcess(Process):
 		if self.agent.id_leader == None:
 			div_servers = [None for i in range(1, self.config.num_agents)]
 			for i in range(1, self.config.num_agents):
-				port = self.config.hosts[self.id][1] - ((self.log_id - 1) * self.num_agents) - i
+				port = self.config.hosts[self.id][1] - ((self.log_id - 1) * self.config.num_agents) - i
 				div_servers[i-1] = self.make_div_server_manager(port, '')
 				self.agent_div_recv[i-1] = div_servers[i-1].get_queue_div_recv()
 				servers += div_servers
@@ -287,7 +287,7 @@ class WorkerProcess(Process):
 		host = self.config.hosts[self.agent.id_leader][0]
 		port = self.config.hosts[self.id][1]
 		root_host = self.config.hosts[0][0]
-		root_port = self.config.hosts[0][1] - ((self.log_id - 1) * self.num_agents)- self.id
+		root_port = self.config.hosts[0][1] - ((self.log_id - 1) * self.config.num_agents)- self.id
 		client = self.make_client_manager(host, port, '')
 		root_client = self.make_div_client_manager(root_host, root_port, '')
 		self.leader_send = client.get_queue_recv()
