@@ -110,24 +110,31 @@ class Agent:
 	def mean(self, numbers):
 		numbers_length = len(numbers)
 		numbers_sum = 0
-		for i in range(0, numbers_length):
-			numbers_sum += float(numbers[i])
 		
-		numbers_mean = numbers_sum / numbers_length
-		return numbers_mean
+		if numbers_length > 0:
+			for i in range(0, numbers_length):
+				numbers_sum += float(numbers[i])
+
+			numbers_mean = numbers_sum / numbers_length
+			return numbers_mean
+		else:
+			return 0
 	
 	def std_dev(self, numbers):
 		numbers_length = len(numbers)
 		numbers_mean = self.mean(numbers)
 		numbers_square_deviations = []
 		
-		for i in range(0, numbers_length):
-			deviation = (numbers[i] - numbers_mean) ** 2
-			numbers_square_deviations.append(deviation)
-		
-		numbers_variance = self.mean(numbers_square_deviations)
-		numbers_std_dev = numbers_variance ** 0.5
-		return numbers_std_dev
+		if numbers_length > 0:
+			for i in range(0, numbers_length):
+				deviation = (numbers[i] - numbers_mean) ** 2
+				numbers_square_deviations.append(deviation)
+
+			numbers_variance = self.mean(numbers_square_deviations)
+			numbers_std_dev = numbers_variance ** 0.5
+			return numbers_std_dev
+		else:
+			return 0
 		
 	def calculate_densities(self):
 		pockets_rmsd = []
