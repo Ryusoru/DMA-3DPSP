@@ -145,7 +145,10 @@ class Agent:
 				rmsd = self.diversity(self.pockets[i], self.pockets[j])
 				pockets_rmsd.append(rmsd)
 		
-		self.den_pockets = self.std_dev(pockets_rmsd) / abs(self.mean(pockets_rmsd))
+		if len(pockets_rmsd) > 0:
+			self.den_pockets = self.std_dev(pockets_rmsd) / abs(self.mean(pockets_rmsd))
+		else:
+			self.den_pockets = float(0)
 		# print '\n> Agent %d calculate pockets density:\n>> Pockets: %s\n>> Pockets diversity: %s\n>> Pockets density: %s\n' % (self.id, filter(lambda p: p!=None, self.pockets), pockets_rmsd, self.den_pockets)
 		
 		if self.id_supporters:
@@ -162,7 +165,10 @@ class Agent:
 					rmsd = self.diversity(subpopulation_pockets[i], subpopulation_pockets[j])
 					subpopulation_rmsd.append(rmsd)
 			
-			self.den_subpopulation = self.std_dev(subpopulation_rmsd) / abs(self.mean(subpopulation_rmsd))
+			if len(subpopulation_rmsd) > 0:
+				self.den_subpopulation = self.std_dev(subpopulation_rmsd) / abs(self.mean(subpopulation_rmsd))
+			else:
+				self.den_subpopulation = float(0)
 			# print '\n> Agent %d calculate subpopulation density:\n>> Pockets: %s\n>> Pockets diversity: %s\n>> Subpopulation density: %s\n' % (self.id, subpopulation_pockets, subpopulation_rmsd, self.den_subpopulation)
 		
 		if self.id_leader == None:
@@ -179,7 +185,10 @@ class Agent:
 					rmsd = self.diversity(population_pockets[i], population_pockets[j])
 					population_rmsd.append(rmsd)
 			
-			self.den_population = self.std_dev(population_rmsd) / abs(self.mean(population_rmsd))
+			if len(population_rmsd) > 0:
+				self.den_population = self.std_dev(population_rmsd) / abs(self.mean(population_rmsd))
+			else:
+				self.den_population = float(0)
 			# print '\n> Agent %d calculate population density:\n>> Pockets: %s\n>> Pockets diversity: %s\n>> Population density: %s\n' % (self.id, population_pockets, population_rmsd, self.den_population)
 	
 	def update(self, solution = None):
