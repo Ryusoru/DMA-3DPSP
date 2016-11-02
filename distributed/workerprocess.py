@@ -220,6 +220,7 @@ class WorkerProcess(Process):
 		ServerManager.register('get_queue_div_recv', callable=lambda: queue_div_recv)
 		manager = ServerManager(address=('', port), authkey=authkey)
 		manager.start()
+		print 'Agent %d div server started at port %d' % (self.id, port)
 		return manager
 	
 	
@@ -246,18 +247,19 @@ class WorkerProcess(Process):
 		ClientManager.register('get_queue_div_recv')
 		manager = ClientManager(address=(host, port), authkey=authkey)
 		manager.connect()
+		print 'Agent %d div client connected to %s at port %d ' % (self.id, host, port)
 		return manager
 	
 	def run_servers(self):
 		servers = [None for i in range(0, self.config.num_sup)]
+		div_servers = [None for i in range(1, self.config.num_agents)]
 		
 		if self.agent.id_leader == None:
-			div_servers = [None for i in range(1, self.config.num_agents)]
 			for i in range(1, self.config.num_agents):
 				port = self.config.root_hosts[i][1]
 				div_servers[i-1] = self.make_div_server_manager(port, '')
 				self.agent_div_recv[i-1] = div_servers[i-1].get_queue_div_recv()
-				servers += div_servers
+			servers += div_servers
 		
 		for i in range(0, self.config.num_sup):
 			host = self.config.hosts[self.agent.id_supporters[i]][0]
@@ -555,7 +557,7 @@ class WorkerProcess(Process):
 				servers[i].shutdown()
 		
 		if self.agent.id_leader == None:
-			for i in range(3, self.config.num_agents-1):
+			for i in range(self.config.num_sup, (self.config.num_agents + self.config.num_sup - 1)):
 				servers[i].shutdown()
 		
 		print '\n************ WorkerProcess %d done ************\n' % (self.id)
