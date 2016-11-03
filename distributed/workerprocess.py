@@ -546,15 +546,15 @@ class WorkerProcess(Process):
 			for i in range(0, self.config.num_sup):
 				self.support_stop_event[i].set()
 		
-		if self.agent.id_leader != None:
-			self.leader_reset_send.put(0)
-		
 		self.save_results()
 		
 		if self.agent.id_supporters:
 			for i in range(0, self.config.num_sup):
 				self.support_reset_recv[i].get()
 				servers[i].shutdown()
+		
+		if self.agent.id_leader != None:
+			self.leader_reset_send.put(0)
 		
 		if self.agent.id_leader == None:
 			for i in range(self.config.num_sup, (self.config.num_agents + self.config.num_sup - 1)):

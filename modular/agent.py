@@ -24,8 +24,8 @@ class Agent:
 		self.supporter_pockets	= [[None for i in range(0, config.num_pockets)] for i in range(1, config.num_sup+1)] if self.id_supporters else None
 		self.population_pockets	= [[None for i in range(0, config.num_pockets)] for i in range(1, config.num_agents)] if self.id_leader == None else None
 		self.den_pockets		= 0
-		self.den_subpopulation	= 0 if self.id_supporters else None
-		self.den_population 	= 0 if self.id_leader == None else None
+		self.den_subpopulation	= 0
+		self.den_population 	= 0
 		self.current 			= Solution(config, sequence)
 		self.sequence			= sequence
 		self.generation 		= 0
