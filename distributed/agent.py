@@ -198,7 +198,7 @@ class Agent:
 		div_flag = True
 		div_worst = -1
 		i = 0
-		div_parameter = 2
+		div_parameter = 2.0
 		# div_parameter = len(solution.pose.sequence()) * 6.0
 		for pocket in self.pockets:
 			if pocket == None:
@@ -415,7 +415,7 @@ class Agent:
 	
 	# Simulated Annealing original
 	
-	def simulated_annealing_original(self, ls_prob_ss, fact_ls, prob_jump, radius_jump, temp_init, hist):
+	def simulated_annealing_old(self, ls_prob_ss, fact_ls, prob_jump, radius_jump, temp_init, hist):
 		# LS only in agent's self.current pocket
 		for i in range (1, len(self.current.pose.sequence())):
 			

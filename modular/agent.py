@@ -198,7 +198,7 @@ class Agent:
 		div_flag = True
 		div_worst = -1
 		i = 0
-		div_parameter = 2
+		div_parameter = 2.0
 		# div_parameter = len(solution.pose.sequence()) * 6.0
 		for pocket in self.pockets:
 			if pocket == None:
