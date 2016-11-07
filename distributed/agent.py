@@ -145,8 +145,11 @@ class Agent:
 				rmsd = self.diversity(self.pockets[i], self.pockets[j])
 				pockets_rmsd.append(rmsd)
 		
-		if len(pockets_rmsd) > 0:
-			self.den_pockets = self.std_dev(pockets_rmsd) / abs(self.mean(pockets_rmsd))
+		pockets_mean = self.mean(pockets_rmsd)
+		pockets_std_dev = self.std_dev(pockets_rmsd)
+		
+		if pockets_mean > 0:
+			self.den_pockets = pockets_std_dev / abs(pockets_mean)
 		else:
 			self.den_pockets = float(0)
 		# print '\n> Agent %d calculate pockets density:\n>> Pockets: %s\n>> Pockets diversity: %s\n>> Pockets density: %s\n' % (self.id, filter(lambda p: p!=None, self.pockets), pockets_rmsd, self.den_pockets)
@@ -165,8 +168,11 @@ class Agent:
 					rmsd = self.diversity(subpopulation_pockets[i], subpopulation_pockets[j])
 					subpopulation_rmsd.append(rmsd)
 			
-			if len(subpopulation_rmsd) > 0:
-				self.den_subpopulation = self.std_dev(subpopulation_rmsd) / abs(self.mean(subpopulation_rmsd))
+			subpopulation_mean = self.mean(subpopulation_rmsd)
+			subpopulation_std_dev = self.std_dev(subpopulation_rmsd)
+
+			if subpopulation_mean > 0:
+				self.den_subpopulation = subpopulation_std_dev / abs(subpopulation_mean)
 			else:
 				self.den_subpopulation = float(0)
 			# print '\n> Agent %d calculate subpopulation density:\n>> Pockets: %s\n>> Pockets diversity: %s\n>> Subpopulation density: %s\n' % (self.id, subpopulation_pockets, subpopulation_rmsd, self.den_subpopulation)
@@ -185,8 +191,11 @@ class Agent:
 					rmsd = self.diversity(population_pockets[i], population_pockets[j])
 					population_rmsd.append(rmsd)
 			
-			if len(population_rmsd) > 0:
-				self.den_population = self.std_dev(population_rmsd) / abs(self.mean(population_rmsd))
+			population_mean = self.mean(population_rmsd)
+			population_std_dev = self.std_dev(population_rmsd)
+
+			if population_mean > 0:
+				self.den_population = population_std_dev / abs(population_mean)
 			else:
 				self.den_population = float(0)
 			# print '\n> Agent %d calculate population density:\n>> Pockets: %s\n>> Pockets diversity: %s\n>> Population density: %s\n' % (self.id, population_pockets, population_rmsd, self.den_population)
