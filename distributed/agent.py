@@ -730,7 +730,7 @@ class Agent:
 								self.current.energy_value = energy_temp
 					
 					
-					# phi & psi
+					# phi & psi angles
 					
 					best_phi = copy.copy(self.current.pose.phi(i+1))
 					best_psi = copy.copy(self.current.pose.psi(i+1))
@@ -785,6 +785,7 @@ class Agent:
 					self.current.energy_value = best_energy
 					
 					# chi angles
+					
 					backup_chi_list = [] # List of chi angles
 					for k in range(self.current.pose.residue(i+1).nchi()):
 						try:
@@ -847,3 +848,213 @@ class Agent:
 						except:
 							break
 	
+	# Simulated Annealing that combines jump to a new neighbourhood for iterations with radius > 1 and bit jump for iterations with radius < 1.
+	
+	def simulated_annealing_new(self, ls_prob_ss, fact_ls, prob_jump, radius_jump, temp_init, hist):
+		# LS only in agent's self.current pocket
+		for i in range (1, len(self.current.pose.sequence())):
+			
+			if (i+1) != len(self.current.pose.sequence()):
+				name_res = self.current.pose.residue(i+1).name3()
+				random.seed()
+				
+				if random.random() <= ls_prob_ss[self.sequence.secondary_sequence_list[i]]:
+					best_phi = copy.copy(self.current.pose.phi(i+1))
+					best_psi = copy.copy(self.current.pose.psi(i+1))
+					
+					best_energy = self.current.energy_value
+					energy_state = best_energy
+					energy_temp = best_energy
+					
+					current_radius = radius_jump
+					bit_start = -0.5
+					bit_end = 0.5
+					
+					if self.id_leader != None:
+						temperature = temp_init
+					else:
+						temperature = temp_init * 2
+					
+					aa_angles = []
+					random.seed()
+					
+					if (current_radius > 1.0):
+						if hist.use_angle_range:
+							# Use ranges of max and min angles
+							aa_angles = [round(random.uniform(self.sequence.maxmin_angles[i][0], self.sequence.maxmin_angles[i][1]), floatprecision),  # PHI
+										 round(random.uniform(self.sequence.maxmin_angles[i][2], self.sequence.maxmin_angles[i][3]), floatprecision),  # PSI
+										 round(random.uniform(self.sequence.maxmin_angles[i][4], self.sequence.maxmin_angles[i][5]), floatprecision),  # CHI1
+										 round(random.uniform(self.sequence.maxmin_angles[i][6], self.sequence.maxmin_angles[i][7]), floatprecision),  # CHI2
+										 round(random.uniform(self.sequence.maxmin_angles[i][8], self.sequence.maxmin_angles[i][9]), floatprecision),  # CHI3
+										 round(random.uniform(self.sequence.maxmin_angles[i][10], self.sequence.maxmin_angles[i][11]), floatprecision)]# CHI4
+						else:
+							# Use histogram
+							try:
+								AA_Ant = self.sequence.sigla[self.sequence.primary_amino_sequence[i-1]]
+								AA = self.sequence.sigla[self.sequence.primary_amino_sequence[i]]
+								AA_Prox = self.sequence.sigla[self.sequence.primary_amino_sequence[i+1]]
+								SS_Ant = self.sequence.siglaSS[str(self.sequence.secondary_sequence_list[i-1])]
+								SS = self.sequence.siglaSS[str(self.sequence.secondary_sequence_list[i])]
+								SS_Prox = self.sequence.siglaSS[str(self.sequence.secondary_sequence_list[i+1])]
+
+							except:
+								print('ERROR')
+								traceback.print_exc()
+								sys.exit('Error getting the angles in local search')
+
+							proba = []
+							proba2 = []
+							name = ''
+							try:
+								proba = hist.prob_hist[AA_Ant+SS_Ant+AA+SS+AA_Prox+SS_Prox]
+								proba2 = hist.prob_hist[self.sequence.primary_amino_sequence[i-1]][self.sequence.secondary_sequence_list[i]]
+								name = AA_Ant+SS_Ant+AA+SS+AA_Prox+SS_Prox
+							except:
+								try:
+									# 50% for each combination
+									if (random.randint(1, 10) <= 5):
+										proba = hist.prob_hist[AA_Ant+SS_Ant+AA+SS]
+										proba2 = hist.prob_hist[self.sequence.primary_amino_sequence[i-1]][self.sequence.secondary_sequence_list[i]]
+										name = AA_Ant+SS_Ant+AA+SS
+									else:
+										proba = hist.prob_hist[AA+SS+AA_Prox+SS_Prox]
+										proba2 = hist.prob_hist[self.sequence.primary_amino_sequence[i-1]][self.sequence.secondary_sequence_list[i]]
+										name = AA+SS+AA_Prox+SS_Prox
+								except:
+									proba = hist.prob_hist[self.sequence.primary_amino_sequence[i-1]][self.sequence.secondary_sequence_list[i]]
+									name = AA+SS
+						
+					# phi & psi angles
+					
+					while(temperature > 0.1):
+						
+						if (current_radius > 1.0):
+							phi = self.current.pose.phi(i+1)
+							psi = self.current.pose.psi(i+1)
+							phi_ant = copy.copy(phi)
+							psi_ant = copy.copy(psi)
+
+							aa_angles = hist.use_histogram(self.sequence.maxmin_angles[i], proba, proba2, name)
+
+							# Baseado nos dados do histograma
+							phi = aa_angles[0] + self.current.pose.phi(i+1) - int(self.current.pose.phi(i+1))
+							psi = aa_angles[1] + self.current.pose.psi(i+1) - int(self.current.pose.psi(i+1))
+
+							# Manhattan distance
+							int_x = abs(self.current.pose.phi(i+1) - phi)
+							int_y = abs(self.current.pose.psi(i+1) - psi)
+							if(int_x > int_y):
+								distance = int_x
+							else:
+								distance = int_y
+
+							if (distance < current_radius):
+								self.current.pose.set_phi(i+1, phi)
+								self.current.pose.set_psi(i+1, psi)
+								self.current.calculate_energy()
+								energy_temp = self.current.energy_value
+							
+						else:
+							phi_ant = copy.copy(phi) # Valor anterior de phi
+							bit = random.uniform(bit_start, bit_end)
+							phi = self.current.pose.phi(i+1)
+							phi += bit
+
+							psi_ant = copy.copy(psi) # Valor anterior de psi
+							bit = random.uniform(bit_start, bit_end)
+							psi = self.current.pose.psi(i+1)
+							psi += bit
+
+							# Alteracao temporaria
+							self.current.pose.set_phi(i+1, phi)
+							self.current.pose.set_psi(i+1, psi)
+							self.current.calculate_energy()
+							energy_temp = self.current.energy_value
+
+						if(energy_temp < energy_state) or (random.random() <= exp((energy_state - energy_temp) / temperature)):
+							energy_state = energy_temp
+
+							if energy_state < best_energy:
+								best_energy = energy_state
+								best_phi = copy.copy(self.current.pose.phi(i+1))
+								best_psi = copy.copy(self.current.pose.psi(i+1))
+
+						else:
+							self.current.pose.set_phi(i+1, phi_ant)
+							self.current.pose.set_psi(i+1, psi_ant)
+							self.current.energy_value = energy_state
+							phi = phi_ant
+							psi = psi_ant
+
+						temperature = temperature * fact_ls
+						current_radius = current_radius * 0.85
+					
+					# Update phi & psi with the best found in SA
+
+					self.current.pose.set_phi(i+1, best_phi)
+					self.current.pose.set_psi(i+1, best_psi)
+					self.current.energy_value = best_energy
+
+					# chi angles
+					
+					backup_chi_list = [] # List of chi angles
+					for k in range(self.current.pose.residue(i+1).nchi()):
+						try:
+							backup_chi_list.append(self.current.pose.chi(k+1, i+1))
+						except:
+							break;
+
+					for n_chi in range(self.current.pose.residue(i+1).nchi()):
+						try:
+							control = 0
+							best_energy = self.current.energy_value
+							energy_temp = best_energy
+
+							while(control != 9991):
+								bit = random.random()
+								chi_value = self.current.pose.chi(n_chi+1, i+1)
+								chi_ant = copy.copy(chi_value)
+
+								if (control <= 0):
+									chi_value += bit
+									if (chi_value > hist.min_rot_chi(name_res, n_chi+1)) and (chi_value < hist.max_rot_chi(name_res, n_chi+1)):
+										self.current.pose.set_chi(n_chi+1, i+1, chi_value)
+										self.current.calculate_energy()
+										energy_temp = self.current.energy_value
+										if energy_temp < best_energy:
+											best_energy = energy_temp
+											control -= 1
+										else:
+											if control == 0:
+												chi_value = backup_chi_list[n_chi]
+												self.current.pose.set_chi(n_chi+1, i+1, chi_value)
+												self.current.energy_value = best_energy
+												control = 999
+											else:
+												if control < 0:
+													chi_value = chi_ant
+													self.current.pose.set_chi(n_chi+1, i+1, chi_value)
+													self.current.energy_value = best_energy
+													control = 9991
+									else:
+										control = 999
+
+								if (control == 999):
+									chi_value = chi_ant
+									chi_value -= bit
+									if (chi_value > hist.min_rot_chi(name_res, n_chi+1)) and (chi_value < hist.max_rot_chi(name_res, n_chi+1)):
+										self.current.pose.set_chi(n_chi+1, i+1, chi_value)
+										self.current.calculate_energy()
+										energy_temp = self.current.energy_value
+										if energy_temp < best_energy:
+											best_energy = energy_temp
+
+										else:
+											self.current.pose.set_chi(n_chi+1, i+1, chi_ant)
+											self.current.energy_value = best_energy
+											chi_value = chi_ant
+											control = 9991
+									else:
+										control = 9991
+						except:
+							break
