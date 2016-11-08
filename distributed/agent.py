@@ -955,14 +955,14 @@ class Agent:
 								energy_temp = self.current.energy_value
 							
 						else:
-							phi_ant = copy.copy(phi) # Valor anterior de phi
 							bit = random.uniform(bit_start, bit_end)
 							phi = self.current.pose.phi(i+1)
+							phi_ant = copy.copy(phi) # Valor anterior de phi
 							phi += bit
 
-							psi_ant = copy.copy(psi) # Valor anterior de psi
 							bit = random.uniform(bit_start, bit_end)
 							psi = self.current.pose.psi(i+1)
+							psi_ant = copy.copy(psi) # Valor anterior de psi
 							psi += bit
 
 							# Alteracao temporaria
