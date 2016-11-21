@@ -161,8 +161,10 @@ class WorkerProcess(Process):
 			fout.write('--- prob of crossover: %f\n' % (self.config.crossover_prob))
 			
 			fout.close()
+			
+			for i in range(0, self.config.num_pockets):
+				self.agent.pockets[i].pose.dump_pdb('%s/pocket-%02d.pdb' % (self.results_path, i))
 		
-		self.agent.pockets[0].pose.dump_pdb('%s/agent-%02d.pdb' % (self.results_path, self.id))
 		fout = open('%s/log-agent-%02d.txt' % (self.results_path, self.id), 'w')
 
 		print '\n%s' % (self.agent)
