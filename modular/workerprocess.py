@@ -156,10 +156,9 @@ class WorkerProcess(Process):
 			
 			fout.close()
 			
-			i = 0
-			while self.agent.pockets[i] != None:
-				self.agent.pockets[i].pose.dump_pdb('%s/pocket-%02d.pdb' % (self.results_path, i))
-				i += 1
+			for i in range(0, self.config.num_pockets):
+				if self.agent.pockets[i] != None:
+					self.agent.pockets[i].pose.dump_pdb('%s/pocket-%02d.pdb' % (self.results_path, i))
 		
 		fout = open('%s/log-agent-%02d.txt' % (self.results_path, self.id), 'w')
 
